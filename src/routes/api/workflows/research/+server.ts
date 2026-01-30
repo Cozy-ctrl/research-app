@@ -39,7 +39,7 @@ export const { POST } = serve<ResearchPayload>(
         "HTTP-Referer": siteUrl,
         "X-Title": "Research Planner"
       },
-      body: {
+      body: JSON.stringify({
         model: "writer/palmyra-x5",
         messages: [
           {
@@ -53,7 +53,9 @@ export const { POST } = serve<ResearchPayload>(
         ],
         temperature: 0.7,
         response_format: { type: "json_object" } 
-      }
+      }),
+      retries: 3,
+      timeout: "30s"
     } as any);
 
     let searchQueries: SearchQuery[] = [];
@@ -76,14 +78,10 @@ export const { POST } = serve<ResearchPayload>(
     const searchResults = await Promise.all(
       searchQueries.map((item, index) => 
         context.call<any>(`search-${index}`, {
-          url: "https://www.searchapi.io/api/v1/search",
+          url: `https://www.searchapi.io/api/v1/search?api_key=${searchApiKey}&engine=google&q=${encodeURIComponent(item.query)}&num=5`,
           method: "GET",
-          params: {
-            api_key: searchApiKey,
-            engine: "google",
-            q: item.query,
-            num: "5"
-          }
+          retries: 3,
+          timeout: "30s"
         } as any)
       )
     );
@@ -106,7 +104,7 @@ export const { POST } = serve<ResearchPayload>(
             "HTTP-Referer": siteUrl,
             "X-Title": "Research Writer"
           },
-          body: {
+          body: JSON.stringify({
             model: "minimax/minimax-m2.1",
             messages: [
               {
@@ -118,7 +116,9 @@ export const { POST } = serve<ResearchPayload>(
                 content: `Context: ${queryItem.context}\nQuery: ${queryItem.query}\n\nSearch Results:\n${snippets}\n\nTask:\n1. Extract and structure key information into a high authority blog post section.\n2. Convert all references into APA citations at the bottom.\n3. Keep it focused on answering the specific question: "${queryItem.query}"`
               }
             ]
-          }
+          }),
+          retries: 3,
+          timeout: "30s"
         } as any);
       })
     );
@@ -152,10 +152,15 @@ export const { POST } = serve<ResearchPayload>(
     await context.call("webhook", {
       url: `${siteUrl}/api/research/webhook`,
       method: "POST",
-      body: {
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
          ...finalContent,
          secret: env.WEBHOOK_SECRET
-      }
+      }),
+      retries: 3,
+      timeout: "30s"
     } as any);
 
     return { status: "completed", researchId };

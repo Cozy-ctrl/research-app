@@ -14,11 +14,19 @@ interface SearchQuery {
   context: string;
 }
 
+// Helper to sanitize headers - Restored from commit 26db369
+function sanitize(str: string | undefined): string {
+  if (!str) return "";
+  return str.replace(/[\u2018\u2019\u201C\u201D]/g, '').replace(/[^\x00-\x7F]/g, '').trim();
+}
+
 export const { POST } = serve<ResearchPayload>(
   async (context) => {
     const { query, userId, researchId } = context.requestPayload;
-    const openRouterKey = context.env.OPENROUTER_API_KEY;
-    const siteUrl = context.env.PUBLIC_SITE_URL || "http://localhost:5173";
+    // Apply sanitization to context.env variables
+    const openRouterKey = sanitize(context.env.OPENROUTER_API_KEY);
+    const searchApiKey = sanitize(context.env.SEARCHAPI_API_KEY);
+    const siteUrl = sanitize(context.env.PUBLIC_SITE_URL) || "http://localhost:5173";
 
     // ============================================
     // STEP 1: Plan Research (Palmyra-X5)
@@ -48,7 +56,7 @@ export const { POST } = serve<ResearchPayload>(
         response_format: { type: "json_object" } 
       }),
       retries: 3,
-      timeout: 30
+      timeout: "30s"
     } as any);
 
     let searchQueries: SearchQuery[] = [];
@@ -70,10 +78,10 @@ export const { POST } = serve<ResearchPayload>(
     const searchResults = await Promise.all(
       searchQueries.map((item, index) => 
         context.call<any>(`search-${index}`, {
-          url: `https://www.searchapi.io/api/v1/search?api_key=${context.env.SEARCHAPI_API_KEY}&engine=google&q=${encodeURIComponent(item.query)}&num=5`,
+          url: `https://www.searchapi.io/api/v1/search?api_key=${searchApiKey}&engine=google&q=${encodeURIComponent(item.query)}&num=5`,
           method: "GET",
           retries: 3,
-          timeout: 30
+          timeout: "30s"
         } as any)
       )
     );
@@ -110,7 +118,7 @@ export const { POST } = serve<ResearchPayload>(
             ]
           }),
           retries: 3,
-          timeout: 30
+          timeout: "30s"
         } as any);
       })
     );
@@ -152,7 +160,7 @@ export const { POST } = serve<ResearchPayload>(
          secret: context.env.WEBHOOK_SECRET
       }),
       retries: 3,
-      timeout: 30
+      timeout: "30s"
     } as any);
 
     return { status: "completed", researchId };

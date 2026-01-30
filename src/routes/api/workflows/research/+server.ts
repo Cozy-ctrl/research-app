@@ -24,9 +24,9 @@ export const { POST } = serve<ResearchPayload>(
   async (context) => {
     const { query, userId, researchId } = context.requestPayload;
     // Apply sanitization to context.env variables
-    const openRouterKey = sanitize(context.env.OPENROUTER_API_KEY);
-    const searchApiKey = sanitize(context.env.SEARCHAPI_API_KEY);
-    const siteUrl = sanitize(context.env.PUBLIC_SITE_URL) || "http://localhost:5173";
+    const openRouterKey = sanitize(env.OPENROUTER_API_KEY);
+    const searchApiKey = sanitize(env.SEARCHAPI_API_KEY);
+    const siteUrl = sanitize(env.PUBLIC_SITE_URL) || "http://localhost:5173";
 
     // ============================================
     // STEP 1: Plan Research (Palmyra-X5)
@@ -165,13 +165,5 @@ export const { POST } = serve<ResearchPayload>(
 
     return { status: "completed", researchId };
   },
-  {
-    env: {
-      OPENROUTER_API_KEY: env.OPENROUTER_API_KEY,
-      PUBLIC_SITE_URL: env.PUBLIC_SITE_URL,
-      SEARCHAPI_API_KEY: env.SEARCHAPI_API_KEY,
-      WEBHOOK_SECRET: env.WEBHOOK_SECRET,
-    },
-    verbose: true,
-  }
+  { env }
 );

@@ -24,11 +24,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
     // Trigger the workflow
     const result = await qstash.publishJSON({
-      api: {
-        name: "demo",
-        baseUrl: baseUrl
-      },
-      url: "/api/workflows/research",
+      url: `${baseUrl}/api/workflows/research`,
       body: {
         query,
         userId: userId || "anonymous",

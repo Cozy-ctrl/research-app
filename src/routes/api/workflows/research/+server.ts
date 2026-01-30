@@ -14,18 +14,11 @@ interface SearchQuery {
   context: string;
 }
 
-// Helper to sanitize headers
-function sanitize(str: string | undefined): string {
-  if (!str) return "";
-  return str.replace(/[\u2018\u2019\u201C\u201D]/g, '').replace(/[^\x00-\x7F]/g, '').trim();
-}
-
 export const { POST } = serve<ResearchPayload>(
   async (context) => {
     const { query, userId, researchId } = context.requestPayload;
-    const openRouterKey = sanitize(env.OPENROUTER_API_KEY);
-
-    const siteUrl = sanitize(env.PUBLIC_SITE_URL) || "http://localhost:5173";
+    const openRouterKey = context.env.OPENROUTER_API_KEY;
+    const siteUrl = context.env.PUBLIC_SITE_URL || "http://localhost:5173";
 
     // ============================================
     // STEP 1: Plan Research (Palmyra-X5)
@@ -55,12 +48,11 @@ export const { POST } = serve<ResearchPayload>(
         response_format: { type: "json_object" } 
       }),
       retries: 3,
-      timeout: "30s"
+      timeout: 30
     } as any);
 
     let searchQueries: SearchQuery[] = [];
     try {
-      // context.call returns the response body directly in the 'body' property if it's JSON
       const content = planResult.body.choices?.[0]?.message?.content || "[]";
       const cleanContent = content.replace(/```json\n?|\n?```/g, "");
       const parsed = JSON.parse(cleanContent);
@@ -81,7 +73,7 @@ export const { POST } = serve<ResearchPayload>(
           url: `https://www.searchapi.io/api/v1/search?api_key=${context.env.SEARCHAPI_API_KEY}&engine=google&q=${encodeURIComponent(item.query)}&num=5`,
           method: "GET",
           retries: 3,
-          timeout: "30s"
+          timeout: 30
         } as any)
       )
     );
@@ -118,7 +110,7 @@ export const { POST } = serve<ResearchPayload>(
             ]
           }),
           retries: 3,
-          timeout: "30s"
+          timeout: 30
         } as any);
       })
     );
@@ -157,10 +149,10 @@ export const { POST } = serve<ResearchPayload>(
       },
       body: JSON.stringify({
          ...finalContent,
-         secret: env.WEBHOOK_SECRET
+         secret: context.env.WEBHOOK_SECRET
       }),
       retries: 3,
-      timeout: "30s"
+      timeout: 30
     } as any);
 
     return { status: "completed", researchId };

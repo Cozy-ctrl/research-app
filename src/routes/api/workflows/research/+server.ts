@@ -24,7 +24,7 @@ export const { POST } = serve<ResearchPayload>(
   async (context) => {
     const { query, userId, researchId } = context.requestPayload;
     const openRouterKey = sanitize(env.OPENROUTER_API_KEY);
-    const searchApiKey = sanitize(env.SEARCHAPI_API_KEY);
+
     const siteUrl = sanitize(env.PUBLIC_SITE_URL) || "http://localhost:5173";
 
     // ============================================
@@ -78,7 +78,7 @@ export const { POST } = serve<ResearchPayload>(
     const searchResults = await Promise.all(
       searchQueries.map((item, index) => 
         context.call<any>(`search-${index}`, {
-          url: `https://www.searchapi.io/api/v1/search?api_key=${searchApiKey}&engine=google&q=${encodeURIComponent(item.query)}&num=5`,
+          url: `https://www.searchapi.io/api/v1/search?api_key=${context.env.SEARCHAPI_API_KEY}&engine=google&q=${encodeURIComponent(item.query)}&num=5`,
           method: "GET",
           retries: 3,
           timeout: "30s"

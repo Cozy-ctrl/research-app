@@ -36,6 +36,7 @@
 		"@sveltejs/adapter-netlify": "^5.2.4",
 		"@upstash/qstash": "^2.9.0",
 		"@upstash/workflow": "^1.1.0",
+		"marked": "^17.0.1",
 		"openai": "^6.17.0"
 	}
 }

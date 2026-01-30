@@ -587,3 +587,29 @@ body {
 	padding: 0.5rem 1rem;
 	border-radius: 0 4px 4px 0;
 }
+
+.error-state {
+	background: rgba(218, 54, 51, 0.05);
+	border: 1px solid rgba(218, 54, 51, 0.2);
+	border-radius: 8px;
+	padding: 1.5rem;
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+	color: #ff6a6a;
+}
+
+.error-icon {
+	font-size: 1.5rem;
+}
+
+.status-badge.error {
+	background: rgba(218, 54, 51, 0.2);
+	color: #ff6a6a;
+	border: 1px solid rgba(218, 54, 51, 0.3);
+	padding: 0.2rem 0.6rem;
+	border-radius: 12px;
+	font-size: 0.75rem;
+	text-transform: uppercase;
+	font-weight: 600;
+}

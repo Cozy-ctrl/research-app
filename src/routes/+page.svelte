@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { marked } from "marked";
 
   interface ResearchResult {
     researchId: string;
@@ -282,19 +283,33 @@
                   <h3>{blog.query.query}</h3>
                 </div>
                 <div class="header-right">
-                  <span class="query-type-badge">{blog.query.type}</span>
+                  {#if blog.content === "Failed to generate content."}
+                    <span class="status-badge error">Failed</span>
+                  {:else}
+                    <span class="query-type-badge">{blog.query.type}</span>
+                  {/if}
                 </div>
               </div>
               
-              <div class="card-content markdown-content">
+              <div class="card-content">
                 <div class="context-box">
                   <strong>Context:</strong> {blog.query.context}
                 </div>
                 <hr class="divider"/>
                 
-                <div class="blog-body">
-                  {@html blog.content.replace(/\n/g, '<br/>')}
-                </div>
+                {#if blog.content === "Failed to generate content."}
+                  <div class="error-state">
+                    <span class="error-icon">⚠️</span>
+                    <p>
+                      Unable to generate content for this section. This can happen if the AI model times out
+                      or if the search results were insufficient.
+                    </p>
+                  </div>
+                {:else}
+                  <div class="blog-body markdown-content">
+                    {@html marked.parse(blog.content)}
+                  </div>
+                {/if}
               </div>
             </div>
           {/each}

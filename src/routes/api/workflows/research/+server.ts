@@ -8,9 +8,18 @@ interface ResearchPayload {
   researchId: string;
 }
 
+function sanitize(str: string | undefined): string {
+  if (!str) return "";
+  // Remove smart quotes and non-ascii characters that might cause header issues
+  return str.replace(/[\u2018\u2019\u201C\u201D]/g, '').replace(/[^\x00-\x7F]/g, '').trim();
+}
+
 export const { POST } = serve<ResearchPayload>(
   async (context) => {
     const { query, userId, researchId } = context.requestPayload;
+
+    const apiKey = sanitize(env.OPENROUTER_API_KEY);
+    const siteUrl = sanitize(env.PUBLIC_SITE_URL) || "http://localhost:5173";
 
     console.log(`Starting research: ${researchId}`);
 
@@ -36,8 +45,8 @@ export const { POST } = serve<ResearchPayload>(
         max_tokens: 4000
       },
       headers: {
-        Authorization: `Bearer ${env.OPENROUTER_API_KEY}`,
-        "HTTP-Referer": env.PUBLIC_SITE_URL || "http://localhost:5173",
+        Authorization: `Bearer ${apiKey}`,
+        "HTTP-Referer": siteUrl,
         "X-Title": "Research Assistant"
       },
       timeout: 7200, // 2 hours
@@ -73,8 +82,8 @@ export const { POST } = serve<ResearchPayload>(
         max_tokens: 1000
       },
       headers: {
-        Authorization: `Bearer ${env.OPENROUTER_API_KEY}`,
-        "HTTP-Referer": env.PUBLIC_SITE_URL || "http://localhost:5173",
+        Authorization: `Bearer ${apiKey}`,
+        "HTTP-Referer": siteUrl,
         "X-Title": "Research Assistant"
       },
       timeout: 7200,

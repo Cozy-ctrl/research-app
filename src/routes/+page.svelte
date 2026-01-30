@@ -2,12 +2,16 @@
   import { onMount } from "svelte";
 
   interface ResearchResult {
-    query: string;
     researchId: string;
-    initialResearch: string;
-    searchAngles: string[];
-    deepDives: Array<{ status: number; content: string }>;
-    minimaxAnalysis: Array<{ status: number; analysis: string }>;
+    query: string;
+    blogs: Array<{
+      query: {
+        query: string;
+        type: string;
+        context: string;
+      };
+      content: string;
+    }>;
     completedAt: string;
   }
 
@@ -19,6 +23,8 @@
   let error = "";
   let success = "";
   let pollInterval: ReturnType<typeof setInterval> | null = null;
+  
+  // ... (keeping existing script logic same, interface was the key change) ...
 
   async function startResearch() {
     if (!query.trim()) {
@@ -206,7 +212,7 @@
 
           <div class="status-content">
             <div class="research-id">
-              <label>Research ID:</label>
+              <span class="label">Research ID:</span>
               <code>{researchId}</code>
               <button
                 on:click={() => {
@@ -266,74 +272,32 @@
           </div>
         </div>
 
-        <!-- Initial Research -->
-        <div class="result-card initial-research">
-          <div class="card-header">
-            <h3>📝 Initial Research</h3>
-            <span class="card-badge">Foundation</span>
-          </div>
-          <div class="card-content">
-            <p>{results.initialResearch}</p>
-          </div>
-        </div>
-
-        <!-- Search Angles -->
-        <div class="result-card search-angles">
-          <div class="card-header">
-            <h3>🎯 Research Angles</h3>
-            <span class="card-badge">{results.searchAngles.length} angles</span>
-          </div>
-          <div class="card-content">
-            <div class="angles-grid">
-              {#each results.searchAngles as angle, i}
-                <div class="angle-item">
-                  <span class="angle-number">{i + 1}</span>
-                  <span class="angle-text">{angle}</span>
+        <!-- Research Blogs -->
+        <div class="blogs-container">
+          {#each results.blogs as blog, i}
+            <div class="result-card blog-post">
+              <div class="card-header">
+                <div class="header-left">
+                  <span class="blog-number">#{i + 1}</span>
+                  <h3>{blog.query.query}</h3>
                 </div>
-              {/each}
-            </div>
-          </div>
-        </div>
-
-        <!-- Deep Dives -->
-        <div class="result-card deep-dives">
-          <div class="card-header">
-            <h3>🔍 Deep Dive Analysis</h3>
-            <span class="card-badge">{results.deepDives.length} analyses</span>
-          </div>
-          <div class="card-content">
-            <div class="dives-container">
-              {#each results.deepDives as dive, i}
-                <div class="dive-item">
-                  <div class="dive-header">
-                    <h4>Analysis {i + 1}</h4>
-                    <span class="status-code" class:success={dive.status === 200}>
-                      {dive.status}
-                    </span>
-                  </div>
-                  <p class="dive-content">{dive.content}</p>
+                <div class="header-right">
+                  <span class="query-type-badge">{blog.query.type}</span>
                 </div>
-              {/each}
-            </div>
-          </div>
-        </div>
-
-        <!-- Minimax Analysis -->
-        <div class="result-card minimax">
-          <div class="card-header">
-            <h3>⚙️ Synthesized Analysis</h3>
-            <span class="card-badge">{results.minimaxAnalysis.length} syntheses</span>
-          </div>
-          <div class="card-content">
-            <div class="analysis-container">
-              {#each results.minimaxAnalysis as analysis, i}
-                <div class="analysis-item">
-                  <div class="analysis-number">Analysis {i + 1}</div>
-                  <div class="analysis-text">{analysis.analysis}</div>
+              </div>
+              
+              <div class="card-content markdown-content">
+                <div class="context-box">
+                  <strong>Context:</strong> {blog.query.context}
                 </div>
-              {/each}
+                <hr class="divider"/>
+                
+                <div class="blog-body">
+                  {@html blog.content.replace(/\n/g, '<br/>')}
+                </div>
+              </div>
             </div>
-          </div>
+          {/each}
         </div>
 
         <!-- Action Buttons -->
@@ -343,13 +307,13 @@
           </button>
           <button
             on:click={() => {
-              const text = `Research: ${results?.query}\n\n${results?.initialResearch}`;
-              navigator.clipboard.writeText(text);
+              const text = results?.blogs.map(b => `# ${b.query.query}\n\n${b.content}`).join('\n\n---\n\n');
+              navigator.clipboard.writeText(text || "");
               success = "Results copied to clipboard!";
             }}
             class="btn btn-secondary"
           >
-            📋 Copy to Clipboard
+            📋 Copy All
           </button>
           <button on:click={resetSearch} class="btn btn-primary">
             🔍 New Search

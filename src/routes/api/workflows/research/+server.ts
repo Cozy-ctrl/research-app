@@ -8,227 +8,157 @@ interface ResearchPayload {
   researchId: string;
 }
 
+interface SearchQuery {
+  query: string;
+  type: "who" | "what" | "why" | "when" | "where" | "how";
+  context: string;
+}
+
+// Helper to sanitize headers
 function sanitize(str: string | undefined): string {
   if (!str) return "";
-  // Remove smart quotes and non-ascii characters that might cause header issues
   return str.replace(/[\u2018\u2019\u201C\u201D]/g, '').replace(/[^\x00-\x7F]/g, '').trim();
 }
 
 export const { POST } = serve<ResearchPayload>(
   async (context) => {
     const { query, userId, researchId } = context.requestPayload;
-
-    const apiKey = sanitize(env.OPENROUTER_API_KEY);
+    const openRouterKey = sanitize(env.OPENROUTER_API_KEY);
+    const searchApiKey = sanitize(env.SEARCHAPI_API_KEY);
     const siteUrl = sanitize(env.PUBLIC_SITE_URL) || "http://localhost:5173";
 
-    console.log(`Starting research: ${researchId}`);
-
     // ============================================
-    // STEP 1: Initial OpenRouter Research Call
+    // STEP 1: Plan Research (Palmyra-X5)
     // ============================================
-    const openrouterInitial = await context.call("openrouter-initial", {
+    const planResult = await context.call<any>("plan-research", {
       url: "https://openrouter.ai/api/v1/chat/completions",
       method: "POST",
+      headers: {
+        "Authorization": `Bearer ${openRouterKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": siteUrl,
+        "X-Title": "Research Planner"
+      },
       body: {
-        model: "openrouter/auto",
+        model: "writer/palmyra-x5",
         messages: [
           {
-            role: "system",
-            content: "You are a comprehensive research assistant. Provide detailed, well-structured research findings."
+            role: "system", 
+            content: "You are a research planning assistant. Analyze the user query and generate up to 10 specific search queries that answer Who, What, Why, When, Where, and How questions as needed. Return a JSON array."
           },
           {
             role: "user",
-            content: `Please conduct comprehensive research on the following topic and provide detailed findings: "${query}"`
+            content: `User Query: "${query}"\n\nReturn a JSON array with objects containing:\n- "query": the search query string\n- "type": one of "who", "what", "why", "when", "where", "how"\n- "context": brief context for this search\n\nExample format:\n[\n  {"query": "what is...", "type": "what", "context": "understanding the concept"},\n  {"query": "who invented...", "type": "who", "context": "historical background"}\n]`
           }
         ],
         temperature: 0.7,
-        max_tokens: 4000
-      },
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "HTTP-Referer": siteUrl,
-        "X-Title": "Research Assistant"
-      },
-      timeout: 7200, // 2 hours
-      retries: 3,
-      retryDelay: "exponential"
-    });
+        response_format: { type: "json_object" } 
+      }
+    } as any);
 
-    if (openrouterInitial.status !== 200) {
-      throw new Error(`OpenRouter initial call failed: ${openrouterInitial.status}`);
-    }
-
-    const initialResearch = openrouterInitial.body.choices?.[0]?.message?.content || "";
-
-    // ============================================
-    // STEP 2: Generate 10 Different Search Angles
-    // ============================================
-    const generateSearchAngles = await context.call("generate-search-angles", {
-      url: "https://openrouter.ai/api/v1/chat/completions",
-      method: "POST",
-      body: {
-        model: "openrouter/auto",
-        messages: [
-          {
-            role: "system",
-            content: "Generate 10 different search query angles for comprehensive research coverage."
-          },
-          {
-            role: "user",
-            content: `Generate 10 different search query variations to thoroughly research: "${query}". Return as a JSON array of strings.`
-          }
-        ],
-        temperature: 0.8,
-        max_tokens: 1000
-      },
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "HTTP-Referer": siteUrl,
-        "X-Title": "Research Assistant"
-      },
-      timeout: 7200,
-      retries: 3
-    });
-
-    let searchAngles = [];
+    let searchQueries: SearchQuery[] = [];
     try {
-      const content = generateSearchAngles.body.choices?.[0]?.message?.content || "[]";
-      searchAngles = JSON.parse(content);
+      // context.call returns the response body directly in the 'body' property if it's JSON
+      const content = planResult.body.choices?.[0]?.message?.content || "[]";
+      const cleanContent = content.replace(/```json\n?|\n?```/g, "");
+      const parsed = JSON.parse(cleanContent);
+      searchQueries = Array.isArray(parsed) ? parsed : (parsed.queries || []);
     } catch (e) {
-      searchAngles = [query, `${query} overview`, `${query} analysis`];
+      console.error("Failed to parse search queries", e);
+      searchQueries = [{ query: query, type: "what", context: "Fallback query" }];
     }
 
+    searchQueries = searchQueries.slice(0, 10);
+
     // ============================================
-    // STEP 3: Parallel Deep Dives via OpenRouter
+    // STEP 2: Execute Search (SearchAPI)
     // ============================================
-    const deepDivePromises = searchAngles.slice(0, 10).map((angle, i) =>
-      context.call(`research-angle-${i}`, {
-        url: "https://openrouter.ai/api/v1/chat/completions",
-        method: "POST",
-        body: {
-          model: "openrouter/auto",
-          messages: [
-            {
-              role: "system",
-              content: "Provide detailed research findings on this specific angle."
-            },
-            {
-              role: "user",
-              content: `Research angle: "${angle}". Provide comprehensive findings and insights.`
-            }
-          ],
-          temperature: 0.7,
-          max_tokens: 2000
-        },
-        headers: {
-          Authorization: `Bearer ${env.OPENROUTER_API_KEY}`,
-          "HTTP-Referer": env.PUBLIC_SITE_URL || "http://localhost:5173",
-          "X-Title": "Research Assistant"
-        },
-        timeout: 7200,
-        retries: 2
+    const searchResults = await Promise.all(
+      searchQueries.map((item, index) => 
+        context.call<any>(`search-${index}`, {
+          url: "https://www.searchapi.io/api/v1/search",
+          method: "GET",
+          params: {
+            api_key: searchApiKey,
+            engine: "google",
+            q: item.query,
+            num: "5"
+          }
+        } as any)
+      )
+    );
+
+    // ============================================
+    // STEP 3: Write Blog Posts (Minimax)
+    // ============================================
+    const blogPosts = await Promise.all(
+      searchResults.map((result, index) => {
+        const queryItem = searchQueries[index];
+        const organicResults = result.body.organic_results || [];
+        const snippets = organicResults.map((r: any) => `Title: ${r.title}\nLink: ${r.link}\nSnippet: ${r.snippet}`).join("\n\n");
+
+        return context.call<any>(`write-blog-${index}`, {
+          url: "https://openrouter.ai/api/v1/chat/completions",
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${openRouterKey}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": siteUrl,
+            "X-Title": "Research Writer"
+          },
+          body: {
+            model: "minimax/minimax-m2.1",
+            messages: [
+              {
+                role: "system",
+                content: "You are an expert content writer. Analyze search results and write high-authority blog posts with strict APA citations."
+              },
+              {
+                role: "user",
+                content: `Context: ${queryItem.context}\nQuery: ${queryItem.query}\n\nSearch Results:\n${snippets}\n\nTask:\n1. Extract and structure key information into a high authority blog post section.\n2. Convert all references into APA citations at the bottom.\n3. Keep it focused on answering the specific question: "${queryItem.query}"`
+              }
+            ]
+          }
+        } as any);
       })
     );
 
-    const deepDiveResults = await Promise.all(deepDivePromises);
+    // ============================================
+    // STEP 4: Consolidate & Notify
+    // ============================================
+    const finalContent = await context.run("consolidate", async () => {
+      const blogs = blogPosts.map((post, i) => ({
+        query: searchQueries[i],
+        content: post.body.choices?.[0]?.message?.content || "Failed to generate content."
+      }));
 
-    // ============================================
-    // STEP 4: Minimax Analysis via OpenRouter
-    // (Minimax through OpenRouter's API)
-    // ============================================
-    const minimaxAnalysisPromises = deepDiveResults.map((result, i) =>
-      context.call(`minimax-analysis-${i}`, {
-        url: "https://openrouter.ai/api/v1/chat/completions",
-        method: "POST",
-        body: {
-          model: "openrouter/auto",
-          messages: [
-            {
-              role: "system",
-              content: "You are an expert at synthesizing and analyzing research data. Provide concise summaries with key takeaways, risks, and opportunities."
-            },
-            {
-              role: "user",
-              content: `Analyze and summarize this research finding into key points, potential risks, and opportunities:\n\n${result.body.choices?.[0]?.message?.content || ""}`
-            }
-          ],
-          temperature: 0.6,
-          max_tokens: 1500
-        },
-        headers: {
-          Authorization: `Bearer ${env.OPENROUTER_API_KEY}`,
-          "HTTP-Referer": env.PUBLIC_SITE_URL || "http://localhost:5173",
-          "X-Title": "Research Assistant"
-        },
-        timeout: 7200,
-        retries: 2
-      })
-    );
-
-    const minimaxResults = await Promise.all(minimaxAnalysisPromises);
-
-    // ============================================
-    // STEP 5: Final Consolidation
-    // ============================================
-    const consolidated = await context.run("consolidate-results", async () => {
-      const consolidationData = {
-        query,
+      const resultData = {
         researchId,
-        initialResearch,
-        searchAngles: searchAngles.slice(0, 10),
-        deepDives: deepDiveResults.map(r => ({
-          status: r.status,
-          content: r.body.choices?.[0]?.message?.content || ""
-        })),
-        minimaxAnalysis: minimaxResults.map(r => ({
-          status: r.status,
-          analysis: r.body.choices?.[0]?.message?.content || ""
-        })),
-        completedAt: new Date().toISOString(),
-        processingTimeMs: Date.now()
+        query,
+        blogs,
+        completedAt: new Date().toISOString()
       };
 
-      // Store in cache for quick retrieval
       researchCache.set(researchId, {
         researchId,
         userId,
         status: "completed",
-        results: consolidationData,
-        cachedAt: new Date().toISOString()
+        results: resultData
       });
 
-      return consolidationData;
+      return resultData;
     });
 
-    // ============================================
-    // STEP 6: Notify Webhook
-    // ============================================
-    // Ensure we have a valid URL base. In local dev it might depend on incoming request, which we don't have direct access to in serve's context easily
-    // unless we use env vars. Ideally env.PUBLIC_SITE_URL should be set.
-    // Fallback to localhost if not set.
-    const origin = env.PUBLIC_SITE_URL || "http://localhost:5173";
-    
-    // Note: The user's code used: `${new URL(context.requestPayload as any).origin}` which implies requestPayload has origin? 
-    // Usually requestPayload only has the body sent. I will use the env var approach for safety.
-
-    const notifyResponse = await context.call("notify-webhook", {
-      url: `${origin}/api/research/webhook`,
+    await context.call("webhook", {
+      url: `${siteUrl}/api/research/webhook`,
       method: "POST",
       body: {
-        researchId,
-        userId,
-        status: "completed",
-        results: consolidated,
-        completedAt: new Date().toISOString(),
-        secret: env.WEBHOOK_SECRET
-      },
-      timeout: 60,
-      retries: 3
-    });
+         ...finalContent,
+         secret: env.WEBHOOK_SECRET
+      }
+    } as any);
 
-    console.log(`Research ${researchId} completed and notified`);
-
-    return { researchId, status: "completed" };
+    return { status: "completed", researchId };
   },
   { env }
 );

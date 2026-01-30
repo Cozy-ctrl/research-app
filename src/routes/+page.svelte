@@ -46,7 +46,9 @@
       const data = await response.json();
       researchId = data.researchId;
       success = "Research started! Waiting for results...";
-      localStorage.setItem("researchId", researchId);
+      if (researchId) {
+        localStorage.setItem("researchId", researchId);
+      }
 
       // Start polling automatically
       startPolling();

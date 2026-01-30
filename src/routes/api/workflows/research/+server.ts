@@ -157,5 +157,13 @@ export const { POST } = serve<ResearchPayload>(
 
     return { status: "completed", researchId };
   },
-  { env }
+  {
+    env: {
+      OPENROUTER_API_KEY: env.OPENROUTER_API_KEY,
+      PUBLIC_SITE_URL: env.PUBLIC_SITE_URL,
+      SEARCHAPI_API_KEY: env.SEARCHAPI_API_KEY,
+      WEBHOOK_SECRET: env.WEBHOOK_SECRET,
+    },
+    verbose: true,
+  }
 );

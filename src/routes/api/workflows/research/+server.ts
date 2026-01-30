@@ -45,11 +45,11 @@ export const { POST } = serve<ResearchPayload>(
         messages: [
           {
             role: "system", 
-            content: "You are a research planning assistant. Analyze the user query and generate up to 10 specific search queries that answer Who, What, Why, When, Where, and How questions as needed. Return a JSON array."
+            content: "You are an expert Google Search operator. Your task is to generate specific, standalone search queries that will yield high-quality research results. NEVER generate vague one-word queries like 'why' or 'how'. Every query must be a complete, self-contained phrase including the subject."
           },
           {
             role: "user",
-            content: `User Query: "${query}"\n\nReturn a JSON array with objects containing:\n- "query": the search query string\n- "type": one of "who", "what", "why", "when", "where", "how"\n- "context": brief context for this search\n\nExample format:\n[\n  {"query": "what is...", "type": "what", "context": "understanding the concept"},\n  {"query": "who invented...", "type": "who", "context": "historical background"}\n]`
+            content: `User Query: "${query}"\n\nGenerate up to 10 unique search queries to fully research this topic.\n\nJSON Output Rules:\n1. "query": The exact string to type into Google. MUST include the subject (e.g. "koala habitat loss statistics" NOT "habitat loss").\n2. "type": One of "who", "what", "why", "when", "where", "how".\n3. "context": Brief explanation of what this search aims to find.\n\nThink: "If I typed this into Google without any other context, would I get the right answer?"`
           }
         ],
         temperature: 0.7,

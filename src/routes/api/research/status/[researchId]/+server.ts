@@ -1,5 +1,5 @@
 import { json, type RequestHandler } from "@sveltejs/kit";
-import { researchCache } from "$lib/server/store";
+import { redis } from "$lib/server/store";
 
 export const GET: RequestHandler = async ({ params }) => {
   const { researchId } = params;
@@ -11,7 +11,7 @@ export const GET: RequestHandler = async ({ params }) => {
     );
   }
 
-  const research = researchCache.get(researchId);
+  const research = await redis.get(researchId);
 
   if (!research) {
     return json(

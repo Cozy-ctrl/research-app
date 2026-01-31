@@ -49,6 +49,7 @@
 		"@sveltejs/adapter-netlify": "^5.2.4",
 		"@tailwindcss/typography": "^0.5.19",
 		"@upstash/qstash": "^2.9.0",
+		"@upstash/redis": "^1.36.1",
 		"@upstash/workflow": "^1.1.0",
 		"lucide-svelte": "^0.563.0",
 		"marked": "^17.0.1",

@@ -1,6 +1,6 @@
 import { serve } from "@upstash/workflow/svelte";
 import { env } from "$env/dynamic/private";
-import { researchCache } from "$lib/server/store";
+import { redis } from "$lib/server/store";
 
 interface ResearchPayload {
   query: string;
@@ -145,7 +145,8 @@ Writing Style Guide:
         completedAt: new Date().toISOString()
       };
 
-      researchCache.set(researchId, {
+      // Save to Redis
+      await redis.set(researchId, {
         researchId,
         userId,
         status: "completed",

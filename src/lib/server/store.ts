@@ -1,4 +1,9 @@
-// Simple in-memory cache (replace with database in production)
-// Note: In serverless environments (like Netlify), this cache will not verify reliably across invocations
-// but it works for local development and demonstration purposes.
-export const researchCache = new Map<string, any>();
+import { Redis } from "@upstash/redis";
+import { env } from "$env/dynamic/private";
+
+// Initialize Redis client
+// Ensure UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN are set in .env
+export const redis = new Redis({
+  url: env.UPSTASH_REDIS_REST_URL,
+  token: env.UPSTASH_REDIS_REST_TOKEN,
+});

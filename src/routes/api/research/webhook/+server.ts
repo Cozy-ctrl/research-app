@@ -1,6 +1,6 @@
 import { json, type RequestHandler } from "@sveltejs/kit";
 import { env } from "$env/dynamic/private";
-import { researchCache } from "$lib/server/store";
+import { redis } from "$lib/server/store";
 
 interface WebhookPayload {
   researchId: string;
@@ -22,7 +22,8 @@ export const POST: RequestHandler = async ({ request }) => {
     }
 
     // Store results in cache
-    researchCache.set(payload.researchId, {
+    // Store results in Redis
+    await redis.set(payload.researchId, {
       researchId: payload.researchId,
       userId: payload.userId,
       status: payload.status,

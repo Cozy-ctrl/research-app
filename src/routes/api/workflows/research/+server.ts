@@ -87,7 +87,7 @@ export const { POST } = serve<ResearchPayload>(
     );
 
     // ============================================
-    // STEP 3: Write Blog Posts (Minimax)
+    // STEP 3: Write Blog Posts (Palmyra-X5)
     // ============================================
     const blogPosts = await Promise.all(
       searchResults.map((result, index) => {
@@ -105,7 +105,7 @@ export const { POST } = serve<ResearchPayload>(
             "X-Title": "Research Writer"
           },
           body: JSON.stringify({
-            model: "minimax/minimax-m2.1",
+            model: "writer/palmyra-x5",
             messages: [
               {
                 role: "system",

@@ -109,7 +109,13 @@ export const { POST } = serve<ResearchPayload>(
             messages: [
               {
                 role: "system",
-                content: "You are an expert content writer. Analyze search results and write high-authority blog posts with strict APA citations."
+                content: `You are an expert content writer. Analyze search results and write high-authority blog posts with strict APA citations.
+
+Writing Style Guide:
+- Tone: Professional, authentic, and direct. Balance insight with straightforward communication.
+- Perspective: Clear, practical, and drawn from real-world experience. Emphasize practical wisdom over theoretical depth.
+- Language: Accessible and easy to understand. Avoid excessive academic complexity.
+- Approach: Demonstrate understanding through relatable examples and clear, concise explanations that connect with readers' everyday experiences.`
               },
               {
                 role: "user",
